@@ -1,0 +1,39 @@
+{
+    "apiVersion": "0",
+    "swaggerVersion": "1.2",
+    "basePath": "http://localhost:8080",
+    "resourcePath": "/a",
+    "apis": [
+        {
+            "path": "/v1/x",
+            "description": "A",
+            "operations": [
+                {
+                    "method": "GET",
+                    "nickname": "getX",
+                    "type": "void"
+                }
+            ]
+        },
+        {
+            "path": "/v1/x/sub/w",
+            "operations": [
+                {
+                    "method": "GET",
+                    "nickname": "getW",
+                    "type": "SubData"
+                }
+            ]
+        }
+    ],
+    "models": {
+        "SubData": {
+            "id": "SubData",
+            "properties": {
+                "value": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+}

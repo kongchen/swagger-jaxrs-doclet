@@ -1,0 +1,121 @@
+{
+    "apiVersion": "0",
+    "swaggerVersion": "1.2",
+    "basePath": "http://localhost:8080",
+    "resourcePath": "/responsemodel",
+    "apis": [
+        {
+            "path": "/responsemodel",
+            "operations": [
+                {
+                    "method": "GET",
+                    "nickname": "unspecifiedResponse",
+                    "type": "Response"
+                },
+                {
+                    "method": "GET",
+                    "nickname": "responseDefinedViaReturn",
+                    "type": "Response1"
+                },
+                {
+                    "method": "GET",
+                    "nickname": "responseDefinedViaTag",
+                    "type": "Response2"
+                },
+                {
+                    "method": "GET",
+                    "nickname": "responseDefinedViaTagForList",
+                    "type": "array",
+                    "items": {
+                    	"$ref": "Response2"
+                    }
+                },
+                {
+                    "method": "GET",
+                    "nickname": "responseDefinedViaTagForPrimitiveList",
+                    "type": "array",
+                    "items": {
+                    	"type": "string"
+                    }
+                },
+                {
+                    "method": "GET",
+                    "nickname": "responseDefinedViaResponseCode",
+                    "type": "Response",
+                    "responseMessages": [
+                        {
+                            "code": 200,
+                            "message": "if ok",
+                            "responseModel" : "Response1"
+                        },
+                        {
+                            "code": 404,
+                            "message": "if no result found",
+                            "responseModel" : "Response2"
+                        },
+                        {
+                            "code": 500,
+                            "message": "if an internal error occurred"
+                        }
+                    ]
+                },
+                {
+                    "method": "GET",
+                    "nickname": "responseMix",
+                    "type": "Response2",
+                    "responseMessages": [
+                        {
+                            "code": 404,
+                            "message": "if no result found",
+                            "responseModel" : "Response3"
+                        }
+                    ]
+                },
+                {
+                    "method": "GET",
+                    "nickname": "interfaceResponse",
+                    "type": "Response4"
+                },
+                {
+                    "method": "GET",
+                    "nickname": "interfaceResponseViaTag",
+                    "type": "Response4"
+                }
+            ]
+        }
+    ],
+    "models": {
+        "Response1": {
+            "id": "Response1",
+            "properties": {
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "Response2": {
+            "id": "Response2",
+            "properties": {
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "Response3": {
+            "id": "Response3",
+            "properties": {
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "Response4": {
+            "id": "Response4",
+            "properties": {
+                "value": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+}

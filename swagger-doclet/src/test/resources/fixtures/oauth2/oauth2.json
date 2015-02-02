@@ -1,0 +1,73 @@
+{
+    "apiVersion": "0",
+    "swaggerVersion": "1.2",
+    "basePath": "http://localhost:8080",
+    "resourcePath": "/oauth2",
+    "apis": [
+        {
+            "path": "/oauth2",
+            "operations": [
+                {
+                    "method": "GET",
+                    "nickname": "customScope",
+                    "type": "void",
+                    "authorizations": {
+					    "oauth2": [
+					        {
+					            "scope": "write:pets",
+					            "description": "modify pets in your account"
+					        }
+					    ]
+					}
+                },
+                {
+                    "method": "GET",
+                    "nickname": "customScopes",
+                    "type": "void",
+                    "authorizations": {
+					    "oauth2": [
+					        {
+					            "scope": "write:pets",
+					            "description": "modify pets in your account"
+					        },
+					        {
+					            "scope": "read:pets",
+					            "description": "read pets in your account"
+					        }
+					    ]
+					}
+                },
+                {
+                    "method": "GET",
+                    "nickname": "defaultNoAuth",
+                    "type": "void"
+                },
+                {
+                    "method": "GET",
+                    "nickname": "defaultAuth",
+                    "type": "void",
+                    "authorizations": {
+					    "oauth2": [
+					        {
+					            "scope": "read:pets",
+					            "description": "read pets in your account"
+					        }
+					    ]
+					}
+                },
+                {
+                    "method": "GET",
+                    "nickname": "noAuth1",
+                    "type": "void",
+                    "authorizations": {}
+                },
+                {
+                    "method": "GET",
+                    "nickname": "noAuth2",
+                    "type": "void",
+                    "authorizations": {}
+                }
+            ]
+        }
+    ]
+}

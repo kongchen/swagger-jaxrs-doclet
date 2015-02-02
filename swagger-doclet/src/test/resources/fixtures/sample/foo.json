@@ -1,0 +1,106 @@
+{
+    "apiVersion": "0",
+    "swaggerVersion": "1.2",
+    "basePath": "http://localhost:8080",
+    "resourcePath": "/foo",
+    "apis": [
+        {
+            "path": "/foo",
+            "operations": [
+                {
+                    "method": "GET",
+                    "nickname": "sayHello",
+                    "type": "string",
+                    "parameters": [
+                        {
+                            "paramType": "query",
+                            "name": "name",
+                            "type": "string",
+                            "defaultValue": "World"
+                        }
+                    ],
+                    "responseMessages": [
+                        {
+                            "code": 404,
+                            "message": "not found"
+                        }
+                    ]
+                },
+                {
+                    "method": "POST",
+                    "nickname": "createSpeech",
+                    "type": "integer",
+                    "parameters": [
+                        {
+                            "paramType": "body",
+                            "name": "speech",
+                            "type": "string",
+                            "required" : true
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "path": "/foo/annotated",
+            "operations": [
+                {
+                    "method": "POST",
+                    "nickname": "createSpeechWithAnnotatedPayload",
+                    "type": "integer",
+                    "parameters": [
+                        {
+                            "paramType": "body",
+                            "name": "speech",
+                            "type": "string",
+                            "required" : true
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "path": "/foo/{fooId}/sub",
+            "operations": [
+                {
+                    "method": "POST",
+                    "nickname": "createSub",
+                    "type": "integer",
+                    "parameters": [
+
+                        {
+                            "paramType": "path",
+                            "name": "fooId",
+                            "type": "string",
+                            "required" : true
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "path": "/foo/{fooId}/sub/annotated",
+            "operations": [
+                {
+                    "method": "GET",
+                    "nickname": "sayHello",
+                    "type": "string",
+                    "parameters": [
+                        {
+                            "paramType": "query",
+                            "name": "name",
+                            "type": "string",
+                            "defaultValue" : "World2"
+                        },
+                        {
+                            "paramType": "path",
+                            "name": "fooId",
+                            "type": "string",
+                            "required" : true
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

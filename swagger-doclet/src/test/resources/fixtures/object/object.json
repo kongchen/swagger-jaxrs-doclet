@@ -1,0 +1,18 @@
+{
+    "apiVersion": "0",
+    "swaggerVersion": "1.2",
+    "basePath": "http://localhost:8080",
+    "resourcePath": "/objects",
+    "apis": [
+        {
+            "path": "/objects",
+            "operations": [
+                {
+                    "method": "GET",
+                    "nickname": "get",
+                    "type": "Object"
+                }
+            ]
+        }
+    ]
+}

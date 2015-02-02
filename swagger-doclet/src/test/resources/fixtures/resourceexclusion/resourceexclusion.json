@@ -1,0 +1,12 @@
+{
+    "apiVersion": "0",
+    "swaggerVersion": "1.2",
+    "apis": [
+     	{
+            "path": "/r2b.{format}"
+        },
+        {
+            "path": "/r4.{format}"
+        }
+    ]
+}

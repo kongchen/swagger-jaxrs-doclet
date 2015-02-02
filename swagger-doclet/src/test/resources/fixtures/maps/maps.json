@@ -1,0 +1,105 @@
+{
+    "apiVersion": "0",
+    "swaggerVersion": "1.2",
+    "basePath": "http://localhost:8080",
+    "resourcePath": "/maps",
+    "apis": [
+        {
+            "path": "/maps/a",
+            "operations": [
+            	{
+                    "method": "GET",
+                    "nickname": "getA",
+                    "type": "ModelA"
+                }
+            ]
+        },
+        {
+            "path": "/maps/b",
+            "operations": [
+            	{
+                    "method": "GET",
+                    "nickname": "getB",
+                    "type": "ModelB"
+                }
+            ]
+        },
+        {
+            "path": "/maps/c",
+            "operations": [
+            	{
+                    "method": "GET",
+                    "nickname": "getC",
+                    "type": "ModelC"
+                }
+            ]
+        },
+        {
+            "path": "/maps/d",
+            "operations": [
+            	{
+                    "method": "GET",
+                    "nickname": "getD",
+                    "type": "ModelD"
+                }
+            ]
+        },
+        {
+            "path": "/maps/e",
+            "operations": [
+            	{
+                    "method": "GET",
+                    "nickname": "getE",
+                    "type": "Map"
+                }
+            ]
+        },
+        {
+            "path": "/maps/f",
+            "operations": [
+            	{
+                    "method": "GET",
+                    "nickname": "getF",
+                    "type": "Map"
+                }
+            ]
+        }
+    ],
+    "models": {
+    	"ModelA": {
+            "id": "ModelA",
+            "properties": {
+                "data": {
+                    "type": "Map"
+                }
+            }
+        },
+        "ModelB": {
+            "id": "ModelB",
+            "properties": {
+                "data": {
+                    "type": "Map"
+                }
+            }
+        },
+        "ModelC": {
+            "id": "ModelC",
+            "properties": {
+                "data": {
+                    "type": "Map"
+                }
+            }
+        },
+        "ModelD": {
+            "id": "ModelD",
+            "properties": {
+                "data": {
+                    "type": "Map"
+                },
+                "data2": {
+                    "type": "Map"
+                }
+            }
+        }
+    }
+}

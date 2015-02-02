@@ -1,0 +1,1306 @@
+package com.carma.swagger.doclet;
+
+import static com.google.common.base.Preconditions.checkArgument;
+import static java.util.Arrays.asList;
+import static java.util.Arrays.copyOfRange;
+
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Properties;
+
+import com.carma.swagger.doclet.model.ApiAuthorizations;
+import com.carma.swagger.doclet.model.ApiInfo;
+import com.carma.swagger.doclet.parser.NamingConvention;
+import com.carma.swagger.doclet.parser.ParserHelper;
+import com.carma.swagger.doclet.parser.ResponseMessageSortMode;
+import com.carma.swagger.doclet.parser.VariableReplacer;
+import com.carma.swagger.doclet.translator.AnnotationAwareTranslator;
+import com.carma.swagger.doclet.translator.FirstNotNullTranslator;
+import com.carma.swagger.doclet.translator.NameBasedTranslator;
+import com.carma.swagger.doclet.translator.Translator;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+/**
+ * The DocletOptions represents the supported options for this doclet.
+ * @version $Id$
+ */
+public class DocletOptions {
+
+	private static <T> T loadModelFromJson(String option, String path, Class<T> resourceClass) {
+		File file = new File(path);
+		checkArgument(file.isFile(), "Path after " + option + " (" + file.getAbsolutePath() + ") is expected to be an existing file!");
+		// load it as json and build the object from it
+		InputStream is = null;
+		try {
+			is = new BufferedInputStream(new FileInputStream(file));
+			return new ObjectMapper().readValue(is, resourceClass);
+		} catch (Exception ex) {
+			throw new IllegalArgumentException("Failed to read model file: " + path + ", error : " + ex.getMessage(), ex);
+		} finally {
+			if (is != null) {
+				try {
+					is.close();
+				} catch (Exception ex) {
+					// ignore
+				}
+			}
+		}
+	}
+
+	/**
+	 * This parses doclet options
+	 * @param options The cmdline options
+	 * @return The parse options
+	 */
+	public static DocletOptions parse(String[][] options) {
+
+		DocletOptions parsedOptions = new DocletOptions();
+
+		// Object mapper settings
+		String serializationFeaturesCsv = null;
+		String deserializationFeaturesCsv = null;
+		String defaultTyping = null;
+		String serializationInclusion = null;
+
+		for (String[] option : options) {
+			if (option[0].equals("-d")) {
+				parsedOptions.outputDirectory = new File(option[1]);
+				checkArgument(parsedOptions.outputDirectory.isDirectory(), "Path after -d is expected to be a directory!");
+			} else if (option[0].equals("-apiAuthorizationsFile")) {
+				parsedOptions.apiAuthorizations = loadModelFromJson("-apiAuthorizationsFile", option[1], ApiAuthorizations.class);
+			} else if (option[0].equals("-apiInfoFile")) {
+				parsedOptions.apiInfo = loadModelFromJson("-apiInfoFile", option[1], ApiInfo.class);
+			} else if (option[0].equals("-variablesPropertiesFile")) {
+
+				File varFile = new File(option[1]);
+				if (!varFile.exists() && !varFile.canRead()) {
+					throw new IllegalStateException("Unable to read variables file: " + varFile.getAbsolutePath() + " check it exists and is readable.");
+				}
+				Properties props = new Properties();
+				InputStream is = null;
+				try {
+					is = new FileInputStream(varFile);
+					props.load(is);
+					parsedOptions.variableReplacements = props;
+				} catch (IOException ex) {
+					throw new IllegalStateException("Failed to read variables file: " + varFile.getAbsolutePath(), ex);
+				} finally {
+					if (is != null) {
+						try {
+							is.close();
+						} catch (IOException ex) {
+							// ignore
+							ex.printStackTrace();
+						}
+					}
+				}
+			} else if (option[0].equals("-docBasePath")) {
+				parsedOptions.docBasePath = option[1];
+			} else if (option[0].equals("-apiBasePath")) {
+				parsedOptions.apiBasePath = option[1];
+			} else if (option[0].equals("-apiVersion")) {
+				parsedOptions.apiVersion = option[1];
+			} else if (option[0].equals("-swaggerUiZipPath") || option[0].equals("-swaggerUiPath")) {
+				parsedOptions.swaggerUiPath = option[1];
+			} else if (option[0].equals("-responseMessageSortMode")) {
+				parsedOptions.responseMessageSortMode = ResponseMessageSortMode.valueOf(option[1]);
+			} else if (option[0].equals("-excludeParamAnnotations")) {
+				parsedOptions.excludeParamAnnotations.addAll(asList(copyOfRange(option, 1, option.length)));
+			} else if (option[0].equals("-disableModels")) {
+				parsedOptions.parseModels = false;
+			} else if (option[0].equals("-modelFieldsRequiredByDefault")) {
+				parsedOptions.modelFieldsRequiredByDefault = true;
+			} else if (option[0].equals("-disableModelFieldsXmlAccessType")) {
+				parsedOptions.modelFieldsXmlAccessTypeEnabled = false;
+			} else if (option[0].equals("-modelFieldsNamingConvention")) {
+				parsedOptions.modelFieldsNamingConvention = NamingConvention.forValue(option[1], NamingConvention.DEFAULT_NAME);
+			} else if (option[0].equals("-disableCopySwaggerUi") || option[0].equals("-skipUiFiles")) {
+				parsedOptions.includeSwaggerUi = false;
+			} else if (option[0].equals("-disableSortApisByPath")) {
+				parsedOptions.sortApisByPath = false;
+			} else if (option[0].equals("-sortResourcesByPath")) {
+				parsedOptions.sortResourcesByPath = true;
+			} else if (option[0].equals("-sortResourcesByPriority")) {
+				parsedOptions.sortResourcesByPriority = true;
+			} else if (option[0].equals("-disableDeprecatedOperationExclusion")) {
+				parsedOptions.excludeDeprecatedOperations = false;
+			} else if (option[0].equals("-disableDeprecatedFieldExclusion")) {
+				parsedOptions.excludeDeprecatedFields = false;
+			} else if (option[0].equals("-disableDeprecatedParamExclusion")) {
+				parsedOptions.excludeDeprecatedParams = false;
+			} else if (option[0].equals("-disableDeprecatedResourceClassExclusion")) {
+				parsedOptions.excludeDeprecatedResourceClasses = false;
+			} else if (option[0].equals("-disableDeprecatedModelClassExclusion")) {
+				parsedOptions.excludeDeprecatedModelClasses = false;
+			} else if (option[0].equals("-responseMessageTags")) {
+				parsedOptions.responseMessageTags.addAll(asList(copyOfRange(option, 1, option.length)));
+			} else if (option[0].equals("-excludeModelPrefixes") || option[0].equals("-typesToTreatAsOpaque")) {
+				parsedOptions.excludeModelPrefixes.addAll(asList(copyOfRange(option, 1, option.length)));
+			} else if (option[0].equals("-excludeResourcePrefixes")) {
+				parsedOptions.excludeResourcePrefixes.addAll(asList(copyOfRange(option, 1, option.length)));
+			} else if (option[0].equals("-genericWrapperTypes")) {
+				parsedOptions.genericWrapperTypes.addAll(asList(copyOfRange(option, 1, option.length)));
+			} else if (option[0].equals("-fileParameterAnnotations")) {
+				parsedOptions.fileParameterAnnotations.addAll(asList(copyOfRange(option, 1, option.length)));
+			} else if (option[0].equals("-fileParameterTypes")) {
+				parsedOptions.fileParameterTypes.addAll(asList(copyOfRange(option, 1, option.length)));
+			} else if (option[0].equals("-formParameterAnnotations")) {
+				parsedOptions.formParameterAnnotations.addAll(asList(copyOfRange(option, 1, option.length)));
+			} else if (option[0].equals("-formParameterTypes")) {
+				parsedOptions.formParameterTypes.addAll(asList(copyOfRange(option, 1, option.length)));
+
+			} else if (option[0].equals("-discriminatorAnnotations")) {
+				parsedOptions.discriminatorAnnotations.addAll(asList(copyOfRange(option, 1, option.length)));
+			} else if (option[0].equals("-subTypesAnnotations")) {
+				parsedOptions.subTypesAnnotations.addAll(asList(copyOfRange(option, 1, option.length)));
+
+			} else if (option[0].equals("-compositeParamAnnotations")) {
+				parsedOptions.compositeParamAnnotations.addAll(asList(copyOfRange(option, 1, option.length)));
+			} else if (option[0].equals("-compositeParamTypes")) {
+				parsedOptions.compositeParamTypes.addAll(asList(copyOfRange(option, 1, option.length)));
+
+			} else if (option[0].equals("-parameterNameAnnotations")) {
+				parsedOptions.parameterNameAnnotations.addAll(asList(copyOfRange(option, 1, option.length)));
+			} else if (option[0].equals("-stringTypePrefixes")) {
+				parsedOptions.stringTypePrefixes.addAll(asList(copyOfRange(option, 1, option.length)));
+			} else if (option[0].equals("-excludeClassTags")) {
+				parsedOptions.excludeClassTags.addAll(asList(copyOfRange(option, 1, option.length)));
+			} else if (option[0].equals("-excludeOperationTags")) {
+				parsedOptions.excludeOperationTags.addAll(asList(copyOfRange(option, 1, option.length)));
+			} else if (option[0].equals("-excludeFieldTags")) {
+				parsedOptions.excludeFieldTags.addAll(asList(copyOfRange(option, 1, option.length)));
+			} else if (option[0].equals("-excludeParamsTags")) {
+				parsedOptions.excludeParamsTags.addAll(asList(copyOfRange(option, 1, option.length)));
+			} else if (option[0].equals("-csvParamsTags")) {
+				parsedOptions.csvParamsTags.addAll(asList(copyOfRange(option, 1, option.length)));
+			} else if (option[0].equals("-paramsMinValueTags")) {
+				parsedOptions.paramsMinValueTags.addAll(asList(copyOfRange(option, 1, option.length)));
+			} else if (option[0].equals("-paramsMaxValueTags")) {
+				parsedOptions.paramsMaxValueTags.addAll(asList(copyOfRange(option, 1, option.length)));
+			} else if (option[0].equals("-paramsDefaultValueTags")) {
+				parsedOptions.paramsDefaultValueTags.addAll(asList(copyOfRange(option, 1, option.length)));
+			} else if (option[0].equals("-paramsNameTags")) {
+				parsedOptions.paramsNameTags.addAll(asList(copyOfRange(option, 1, option.length)));
+			} else if (option[0].equals("-resourceTags")) {
+				parsedOptions.resourceTags.addAll(asList(copyOfRange(option, 1, option.length)));
+			} else if (option[0].equals("-responseTypeTags")) {
+				parsedOptions.responseTypeTags.addAll(asList(copyOfRange(option, 1, option.length)));
+			} else if (option[0].equals("-inputTypeTags")) {
+				parsedOptions.inputTypeTags.addAll(asList(copyOfRange(option, 1, option.length)));
+			} else if (option[0].equals("-defaultErrorTypeTags")) {
+				parsedOptions.defaultErrorTypeTags.addAll(asList(copyOfRange(option, 1, option.length)));
+			} else if (option[0].equals("-apiDescriptionTags")) {
+				parsedOptions.apiDescriptionTags.addAll(asList(copyOfRange(option, 1, option.length)));
+			} else if (option[0].equals("-operationNotesTags")) {
+				parsedOptions.operationNotesTags.addAll(asList(copyOfRange(option, 1, option.length)));
+			} else if (option[0].equals("-operationSummaryTags")) {
+				parsedOptions.operationSummaryTags.addAll(asList(copyOfRange(option, 1, option.length)));
+			} else if (option[0].equals("-fieldDescriptionTags")) {
+				parsedOptions.fieldDescriptionTags.addAll(asList(copyOfRange(option, 1, option.length)));
+			} else if (option[0].equals("-fieldMinTags")) {
+				parsedOptions.fieldMinTags.addAll(asList(copyOfRange(option, 1, option.length)));
+			} else if (option[0].equals("-fieldMaxTags")) {
+				parsedOptions.fieldMaxTags.addAll(asList(copyOfRange(option, 1, option.length)));
+			} else if (option[0].equals("-fieldDefaultTags")) {
+				parsedOptions.fieldDefaultTags.addAll(asList(copyOfRange(option, 1, option.length)));
+			} else if (option[0].equals("-requiredParamsTags")) {
+				parsedOptions.requiredParamsTags.addAll(asList(copyOfRange(option, 1, option.length)));
+			} else if (option[0].equals("-optionalParamsTags")) {
+				parsedOptions.optionalParamsTags.addAll(asList(copyOfRange(option, 1, option.length)));
+			} else if (option[0].equals("-requiredFieldTags")) {
+				parsedOptions.requiredFieldTags.addAll(asList(copyOfRange(option, 1, option.length)));
+			} else if (option[0].equals("-optionalFieldTags")) {
+				parsedOptions.optionalFieldTags.addAll(asList(copyOfRange(option, 1, option.length)));
+			} else if (option[0].equals("-unauthOperationTags")) {
+				parsedOptions.unauthOperationTags.addAll(asList(copyOfRange(option, 1, option.length)));
+			} else if (option[0].equals("-authOperationTags")) {
+				parsedOptions.authOperationTags.addAll(asList(copyOfRange(option, 1, option.length)));
+			} else if (option[0].equals("-unauthOperationTagValues")) {
+				parsedOptions.unauthOperationTagValues.addAll(asList(copyOfRange(option, 1, option.length)));
+			} else if (option[0].equals("-authOperationScopes")) {
+				parsedOptions.authOperationScopes.addAll(asList(copyOfRange(option, 1, option.length)));
+			} else if (option[0].equals("-operationScopeTags")) {
+				parsedOptions.operationScopeTags.addAll(asList(copyOfRange(option, 1, option.length)));
+			} else if (option[0].equals("-serializationFeatures")) {
+				serializationFeaturesCsv = option[1];
+			} else if (option[0].equals("-deserializationFeatures")) {
+				deserializationFeaturesCsv = option[1];
+			} else if (option[0].equals("-defaultTyping")) {
+				defaultTyping = option[1];
+			} else if (option[0].equals("-serializationInclusion")) {
+				serializationInclusion = option[1];
+			}
+		}
+		parsedOptions.recorder = new ObjectMapperRecorder(serializationFeaturesCsv, deserializationFeaturesCsv, defaultTyping, serializationInclusion);
+		return parsedOptions;
+	}
+
+	private File outputDirectory;
+	private String docBasePath = null;
+	private String apiBasePath = "http://localhost:8080";
+	private String swaggerUiPath = null;
+	private String apiVersion = "0";
+
+	private boolean includeSwaggerUi = true;
+
+	private Properties variableReplacements;
+
+	private List<String> excludeResourcePrefixes;
+	private List<String> excludeModelPrefixes;
+	private List<String> genericWrapperTypes;
+	private List<String> responseMessageTags;
+	private List<String> responseTypeTags;
+	private List<String> inputTypeTags;
+	private List<String> defaultErrorTypeTags;
+
+	private List<String> compositeParamAnnotations;
+	private List<String> compositeParamTypes;
+
+	private List<String> discriminatorAnnotations;
+	private List<String> subTypesAnnotations;
+
+	private List<String> excludeParamAnnotations;
+	private List<String> excludeClassTags;
+	private List<String> excludeOperationTags;
+	private List<String> excludeFieldTags;
+	private List<String> excludeParamsTags;
+	private List<String> csvParamsTags;
+	private List<String> paramsMinValueTags;
+	private List<String> paramsMaxValueTags;
+	private List<String> paramsDefaultValueTags;
+	private List<String> paramsNameTags;
+	private List<String> resourceTags;
+	private List<String> apiDescriptionTags;
+	private List<String> operationNotesTags;
+	private List<String> operationSummaryTags;
+	private List<String> fieldDescriptionTags;
+
+	private List<String> fieldMinTags;
+	private List<String> fieldMaxTags;
+	private List<String> fieldDefaultTags;
+
+	private List<String> requiredParamsTags;
+	private List<String> optionalParamsTags;
+
+	private List<String> requiredFieldTags;
+	private List<String> optionalFieldTags;
+
+	private List<String> unauthOperationTags; // tags that say a method does NOT require authorization
+	private List<String> authOperationTags; // tags that indicate whether an operation requires auth or not, coupled with a value from unauthOperationTagValues
+	private List<String> unauthOperationTagValues; // for tags in authOperationTags this is the value to look for to indicate method does NOT require
+													// authorization
+	private List<String> authOperationScopes; // default scopes to add if authOperationTags is present but no scopes
+	private List<String> operationScopeTags; // explicit scopes that are required for authorization for a method
+
+	private List<String> resourcePriorityTags;
+	private List<String> resourceDescriptionTags;
+
+	private List<String> fileParameterAnnotations; // FQN of annotations that if present denote a parameter as being a File data type
+	private List<String> fileParameterTypes; // FQN of types of a parameter that are File data types
+
+	private List<String> formParameterAnnotations; // FQN of annotations that if present denote a parameter as being a form parameter type
+	private List<String> formParameterTypes; // FQN of types of a parameter that are form parameter types
+
+	private List<String> parameterNameAnnotations;
+
+	private List<String> stringTypePrefixes; // list of type prefixes that are mapped to string data type, can be used for example to map header types to
+												// strings
+
+	private boolean excludeDeprecatedResourceClasses = true;
+	private boolean excludeDeprecatedModelClasses = true;
+	private boolean excludeDeprecatedOperations = true;
+	private boolean excludeDeprecatedFields = true;
+	private boolean excludeDeprecatedParams = true;
+
+	private boolean parseModels = true;
+	private boolean modelFieldsRequiredByDefault = false;
+	private boolean modelFieldsXmlAccessTypeEnabled = true;
+	private NamingConvention modelFieldsNamingConvention = NamingConvention.DEFAULT_NAME;
+
+	private boolean sortResourcesByPath = false;
+	private boolean sortResourcesByPriority = false;
+	private boolean sortApisByPath = true;
+
+	private ResponseMessageSortMode responseMessageSortMode;
+
+	private ApiAuthorizations apiAuthorizations;
+
+	private ApiInfo apiInfo;
+
+	private Recorder recorder;
+	private Translator translator;
+
+	/**
+	 * This creates a DocletOptions
+	 */
+	public DocletOptions() {
+		this.excludeParamAnnotations = new ArrayList<String>();
+		this.excludeParamAnnotations.add("javax.ws.rs.core.Context");
+
+		this.responseMessageTags = new ArrayList<String>();
+		this.responseMessageTags.add("responseMessage");
+		this.responseMessageTags.add("status");
+		this.responseMessageTags.add("errorResponse");
+		this.responseMessageTags.add("errorCode");
+		this.responseMessageTags.add("successResponse");
+		this.responseMessageTags.add("successCode");
+
+		this.excludeModelPrefixes = new ArrayList<String>();
+		this.excludeModelPrefixes.add("org.joda.time.DateTime");
+		this.excludeModelPrefixes.add("java.util.UUID");
+		this.excludeModelPrefixes.add("java.io.");
+		this.excludeModelPrefixes.add("com.sun.jersey.core.header.");
+		this.excludeModelPrefixes.add("org.springframework.web.multipart.");
+		this.excludeModelPrefixes.add("org.jboss.resteasy.plugins.providers.multipart.");
+
+		// types which are mapped to strings
+		this.stringTypePrefixes = new ArrayList<String>();
+		this.stringTypePrefixes.add("com.sun.jersey.core.header.");
+		this.stringTypePrefixes.add("org.joda.time.");
+
+		// types which simply wrap an entity
+		this.genericWrapperTypes = new ArrayList<String>();
+		this.genericWrapperTypes.add("com.sun.jersey.api.JResponse");
+
+		// annotations and types which are mapped to File data type,
+		// NOTE these only apply for multipart resources
+		this.fileParameterAnnotations = new ArrayList<String>();
+		this.fileParameterAnnotations.add("org.jboss.resteasy.annotations.providers.multipart.MultipartForm");
+
+		this.fileParameterTypes = new ArrayList<String>();
+		this.fileParameterTypes.add("java.io.File");
+		this.fileParameterTypes.add("java.io.InputStream");
+		this.fileParameterTypes.add("byte[]");
+		this.fileParameterTypes.add("org.jboss.resteasy.plugins.providers.multipart.MultipartFormDataInput");
+
+		// annotations and types which are mapped to form parameter type
+		this.formParameterAnnotations = new ArrayList<String>();
+		this.formParameterAnnotations.add("com.sun.jersey.multipart.FormDataParam");
+		this.formParameterAnnotations.add("javax.ws.rs.FormParam");
+
+		this.formParameterTypes = new ArrayList<String>();
+		this.formParameterTypes.add("com.sun.jersey.core.header.FormDataContentDisposition");
+
+		// overrides for parameter names
+		this.paramsNameTags = new ArrayList<String>();
+		this.paramsNameTags.add("paramsName");
+		this.paramsNameTags.add("overrideParamsName");
+
+		// annotations to use for parameter names
+		this.parameterNameAnnotations = new ArrayList<String>();
+		for (String annotation : ParserHelper.JAXRS_PARAM_ANNOTATIONS) {
+			this.parameterNameAnnotations.add(annotation);
+		}
+		this.parameterNameAnnotations.add("com.sun.jersey.multipart.FormDataParam");
+
+		// annotations/types to use for composite param objects
+		this.compositeParamAnnotations = new ArrayList<String>();
+		this.compositeParamAnnotations.add("javax.ws.rs.BeanParam");
+		this.compositeParamTypes = new ArrayList<String>();
+
+		this.discriminatorAnnotations = new ArrayList<String>();
+		this.discriminatorAnnotations.add("com.fasterxml.jackson.annotation.JsonTypeInfo");
+
+		this.subTypesAnnotations = new ArrayList<String>();
+		this.subTypesAnnotations.add("com.fasterxml.jackson.annotation.JsonSubTypes");
+
+		this.excludeResourcePrefixes = new ArrayList<String>();
+
+		this.excludeClassTags = new ArrayList<String>();
+		this.excludeClassTags.add("hidden");
+		this.excludeClassTags.add("hide");
+		this.excludeClassTags.add("exclude");
+
+		this.excludeOperationTags = new ArrayList<String>();
+		this.excludeOperationTags.add("hidden");
+		this.excludeOperationTags.add("hide");
+		this.excludeOperationTags.add("exclude");
+
+		this.excludeFieldTags = new ArrayList<String>();
+		this.excludeFieldTags.add("hidden");
+		this.excludeFieldTags.add("hide");
+		this.excludeFieldTags.add("exclude");
+
+		this.excludeParamsTags = new ArrayList<String>();
+		this.excludeParamsTags.add("excludeParams");
+		this.excludeParamsTags.add("hiddenParams");
+		this.excludeParamsTags.add("hideParams");
+
+		this.csvParamsTags = new ArrayList<String>();
+		this.csvParamsTags.add("csvParams");
+
+		this.paramsMinValueTags = new ArrayList<String>();
+		this.paramsMinValueTags.add("paramsMinValue");
+		this.paramsMinValueTags.add("paramsMinimumValue");
+		this.paramsMinValueTags.add("minValues");
+
+		this.paramsMaxValueTags = new ArrayList<String>();
+		this.paramsMaxValueTags.add("paramsMaxValue");
+		this.paramsMaxValueTags.add("paramsMaximumValue");
+		this.paramsMaxValueTags.add("maxValues");
+
+		this.paramsDefaultValueTags = new ArrayList<String>();
+		this.paramsDefaultValueTags.add("paramsDefaultValue");
+		this.paramsDefaultValueTags.add("defaultValues");
+
+		this.resourceTags = new ArrayList<String>();
+		this.resourceTags.add("parentEndpointName");
+		this.resourceTags.add("resourcePath");
+		this.resourceTags.add("resource");
+
+		this.responseTypeTags = new ArrayList<String>();
+		this.responseTypeTags.add("responseType");
+		this.responseTypeTags.add("outputType");
+
+		this.inputTypeTags = new ArrayList<String>();
+		this.inputTypeTags.add("inputType");
+		this.inputTypeTags.add("bodyType");
+
+		this.defaultErrorTypeTags = new ArrayList<String>();
+		this.defaultErrorTypeTags.add("defaultErrorType");
+
+		this.apiDescriptionTags = new ArrayList<String>();
+		this.apiDescriptionTags.add("apiDescription");
+
+		this.operationNotesTags = new ArrayList<String>();
+		this.operationNotesTags.add("description");
+		this.operationNotesTags.add("comment");
+		this.operationNotesTags.add("notes");
+
+		this.operationSummaryTags = new ArrayList<String>();
+		this.operationSummaryTags.add("summary");
+		this.operationSummaryTags.add("endpointName");
+
+		this.fieldDescriptionTags = new ArrayList<String>();
+		this.fieldDescriptionTags.add("description");
+		this.fieldDescriptionTags.add("comment");
+		this.fieldDescriptionTags.add("return");
+
+		this.fieldMinTags = new ArrayList<String>();
+		this.fieldMinTags.add("min");
+		this.fieldMinTags.add("minimum");
+
+		this.fieldMaxTags = new ArrayList<String>();
+		this.fieldMaxTags.add("max");
+		this.fieldMaxTags.add("maximum");
+
+		this.fieldDefaultTags = new ArrayList<String>();
+		this.fieldDefaultTags.add("default");
+		this.fieldDefaultTags.add("defaultValue");
+
+		this.requiredParamsTags = new ArrayList<String>();
+		this.requiredParamsTags.add("requiredParams");
+
+		this.optionalParamsTags = new ArrayList<String>();
+		this.optionalParamsTags.add("optionalParams");
+
+		this.requiredFieldTags = new ArrayList<String>();
+		this.requiredFieldTags.add("required");
+		this.requiredFieldTags.add("requiredField");
+
+		this.optionalFieldTags = new ArrayList<String>();
+		this.optionalFieldTags.add("optional");
+		this.optionalFieldTags.add("optionalField");
+
+		this.unauthOperationTags = new ArrayList<String>();
+		this.unauthOperationTags.add("noAuth");
+		this.unauthOperationTags.add("unauthorized");
+
+		this.authOperationTags = new ArrayList<String>();
+		this.authOperationTags.add("authentication");
+		this.authOperationTags.add("authorization");
+
+		this.unauthOperationTagValues = new ArrayList<String>();
+		this.unauthOperationTagValues.add("not required");
+		this.unauthOperationTagValues.add("off");
+		this.unauthOperationTagValues.add("false");
+		this.unauthOperationTagValues.add("none");
+
+		this.operationScopeTags = new ArrayList<String>();
+		this.operationScopeTags.add("scope");
+		this.operationScopeTags.add("oauth2Scope");
+
+		this.authOperationScopes = new ArrayList<String>();
+
+		this.resourcePriorityTags = new ArrayList<String>();
+		this.resourcePriorityTags.add("resourcePriority");
+		this.resourcePriorityTags.add("resourceOrder");
+
+		this.resourceDescriptionTags = new ArrayList<String>();
+		this.resourceDescriptionTags.add("resourceDescription");
+
+		this.responseMessageSortMode = ResponseMessageSortMode.CODE_ASC;
+
+		FirstNotNullTranslator fnnTranslator =
+
+		new FirstNotNullTranslator();
+		for (String paramAnnotation : ParserHelper.JAXRS_PARAM_ANNOTATIONS) {
+			fnnTranslator.addNext(new AnnotationAwareTranslator(this).element(paramAnnotation, "value"));
+		}
+
+		fnnTranslator
+				.addNext(
+						new AnnotationAwareTranslator(this).ignore("javax.xml.bind.annotation.XmlTransient")
+								.element("javax.xml.bind.annotation.XmlElement", "name").rootElement("javax.xml.bind.annotation.XmlRootElement", "name"))
+				.addNext(
+						new AnnotationAwareTranslator(this).ignore("javax.xml.bind.annotation.XmlTransient").element("javax.xml.bind.annotation.XmlAttribute",
+								"name"))
+				.addNext(
+						new AnnotationAwareTranslator(this).ignore("com.fasterxml.jackson.annotation.JsonIgnore")
+								.element("com.fasterxml.jackson.annotation.JsonProperty", "value")
+								.rootElement("com.fasterxml.jackson.annotation.JsonRootName", "value"))
+
+				.addNext(
+						new AnnotationAwareTranslator(this).ignore("org.codehaus.jackson.map.annotate.JsonIgnore")
+								.element("org.codehaus.jackson.map.annotate.JsonProperty", "value")
+								.rootElement("org.codehaus.jackson.map.annotate.JsonRootName", "value")).addNext(new NameBasedTranslator(this));
+
+		fnnTranslator.addNext(new NameBasedTranslator(this));
+
+		this.translator = fnnTranslator;
+	}
+
+	public File getOutputDirectory() {
+		return this.outputDirectory;
+	}
+
+	public String getDocBasePath() {
+		return this.docBasePath;
+	}
+
+	/**
+	 * This sets the docBasePath
+	 * @param docBasePath the docBasePath to set
+	 */
+	public DocletOptions setDocBasePath(String docBasePath) {
+		this.docBasePath = docBasePath;
+		return this;
+	}
+
+	public String getApiBasePath() {
+		return this.apiBasePath;
+	}
+
+	/**
+	 * This sets the apiBasePath
+	 * @param apiBasePath the apiBasePath to set
+	 */
+	public DocletOptions setApiBasePath(String apiBasePath) {
+		this.apiBasePath = apiBasePath;
+		return this;
+	}
+
+	public String getApiVersion() {
+		return this.apiVersion;
+	}
+
+	/**
+	 * This sets the apiVersion
+	 * @param apiVersion the apiVersion to set
+	 */
+	public DocletOptions setApiVersion(String apiVersion) {
+		this.apiVersion = apiVersion;
+		return this;
+	}
+
+	/**
+	 * This gets the swaggerUiPath
+	 * @return the swaggerUiPath
+	 */
+	public String getSwaggerUiPath() {
+		return this.swaggerUiPath;
+	}
+
+	/**
+	 * This gets the responseMessageTags
+	 * @return the responseMessageTags
+	 */
+	public List<String> getResponseMessageTags() {
+		return this.responseMessageTags;
+	}
+
+	/**
+	 * This gets the excludeOperationTags
+	 * @return the excludeOperationTags
+	 */
+	public List<String> getExcludeOperationTags() {
+		return this.excludeOperationTags;
+	}
+
+	/**
+	 * This gets the excludeClassTags
+	 * @return the excludeClassTags
+	 */
+	public List<String> getExcludeClassTags() {
+		return this.excludeClassTags;
+	}
+
+	/**
+	 * This gets the excludeFieldTags
+	 * @return the excludeFieldTags
+	 */
+	public List<String> getExcludeFieldTags() {
+		return this.excludeFieldTags;
+	}
+
+	/**
+	 * This gets the excludeParamAnnotations
+	 * @return the excludeParamAnnotations
+	 */
+	public List<String> getExcludeParamAnnotations() {
+		return this.excludeParamAnnotations;
+	}
+
+	/**
+	 * This gets the excludeParamsTags
+	 * @return the excludeParamsTags
+	 */
+	public List<String> getExcludeParamsTags() {
+		return this.excludeParamsTags;
+	}
+
+	/**
+	 * This gets the csvParamsTags
+	 * @return the csvParamsTags
+	 */
+	public List<String> getCsvParamsTags() {
+		return this.csvParamsTags;
+	}
+
+	/**
+	 * This gets the paramsMinValueTags
+	 * @return the paramsMinValueTags
+	 */
+	public List<String> getParamsMinValueTags() {
+		return this.paramsMinValueTags;
+	}
+
+	/**
+	 * This gets the paramsMaxValueTags
+	 * @return the paramsMaxValueTags
+	 */
+	public List<String> getParamsMaxValueTags() {
+		return this.paramsMaxValueTags;
+	}
+
+	/**
+	 * This gets the paramsDefaultValueTags
+	 * @return the paramsDefaultValueTags
+	 */
+	public List<String> getParamsDefaultValueTags() {
+		return this.paramsDefaultValueTags;
+	}
+
+	/**
+	 * This gets the paramsNameTags
+	 * @return the paramsNameTags
+	 */
+	public List<String> getParamsNameTags() {
+		return this.paramsNameTags;
+	}
+
+	/**
+	 * This gets the resourceTags
+	 * @return the resourceTags
+	 */
+	public List<String> getResourceTags() {
+		return this.resourceTags;
+	}
+
+	/**
+	 * This gets prefixes of the FQN of resource classes to exclude
+	 * @return the prefixes of the FQN of resource classes to exclude
+	 */
+	public List<String> getExcludeResourcePrefixes() {
+		return this.excludeResourcePrefixes;
+	}
+
+	/**
+	 * This sets the prefixes of the FQN of resource classes to exclude
+	 * @param excludeResourcePrefixes the prefixes of the FQN of resource classes to exclude
+	 * @return this
+	 */
+	public DocletOptions setExcludeResourcePrefixes(List<String> excludeResourcePrefixes) {
+		this.excludeResourcePrefixes = excludeResourcePrefixes;
+		return this;
+	}
+
+	/**
+	 * This gets the discriminatorAnnotations
+	 * @return the discriminatorAnnotations
+	 */
+	public List<String> getDiscriminatorAnnotations() {
+		return this.discriminatorAnnotations;
+	}
+
+	/**
+	 * This gets the subTypesAnnotations
+	 * @return the subTypesAnnotations
+	 */
+	public List<String> getSubTypesAnnotations() {
+		return this.subTypesAnnotations;
+	}
+
+	/**
+	 * This gets prefixes of the FQN of model classes to exclude
+	 * @return prefixes of the FQN of model classes to exclude
+	 */
+	public List<String> getExcludeModelPrefixes() {
+		return this.excludeModelPrefixes;
+	}
+
+	/**
+	 * This sets the prefixes of the FQN of model classes to exclude
+	 * @param excludeModelPrefixes prefixes of the FQN of model classes to exclude
+	 * @return this
+	 */
+	public DocletOptions setExcludeModelPrefixes(List<String> excludeModelPrefixes) {
+		this.excludeModelPrefixes = excludeModelPrefixes;
+		return this;
+	}
+
+	/**
+	 * This gets a list of FQN of types which simply wrap the
+	 * real underlying data type
+	 * @return The type
+	 */
+	public List<String> getGenericWrapperTypes() {
+		return this.genericWrapperTypes;
+	}
+
+	/**
+	 * This gets the fileParameterAnnotations
+	 * @return the fileParameterAnnotations
+	 */
+	public List<String> getFileParameterAnnotations() {
+		return this.fileParameterAnnotations;
+	}
+
+	/**
+	 * This gets the fileParameterTypes
+	 * @return the fileParameterTypes
+	 */
+	public List<String> getFileParameterTypes() {
+		return this.fileParameterTypes;
+	}
+
+	/**
+	 * This gets the formParameterAnnotations
+	 * @return the formParameterAnnotations
+	 */
+	public List<String> getFormParameterAnnotations() {
+		return this.formParameterAnnotations;
+	}
+
+	/**
+	 * This gets the formParameterTypes
+	 * @return the formParameterTypes
+	 */
+	public List<String> getFormParameterTypes() {
+		return this.formParameterTypes;
+	}
+
+	/**
+	 * This gets the compositeParamAnnotations
+	 * @return the compositeParamAnnotations
+	 */
+	public List<String> getCompositeParamAnnotations() {
+		return this.compositeParamAnnotations;
+	}
+
+	/**
+	 * This gets the compositeParamTypes
+	 * @return the compositeParamTypes
+	 */
+	public List<String> getCompositeParamTypes() {
+		return this.compositeParamTypes;
+	}
+
+	/**
+	 * This gets the parameterNameAnnotations
+	 * @return the parameterNameAnnotations
+	 */
+	public List<String> getParameterNameAnnotations() {
+		return this.parameterNameAnnotations;
+	}
+
+	/**
+	 * This gets the stringTypePrefixes
+	 * @return the stringTypePrefixes
+	 */
+	public List<String> getStringTypePrefixes() {
+		return this.stringTypePrefixes;
+	}
+
+	/**
+	 * This is whether model parsing is enabled
+	 * @return Whether model parsing is enabled
+	 */
+	public boolean isParseModels() {
+		return this.parseModels;
+	}
+
+	/**
+	 * This is whether model fields are required by default e.g. if it is not specified whether a field is optional or not
+	 * @return whether model fields are required by default e.g. if it is not specified whether a field is optional or not
+	 */
+	public boolean isModelFieldsRequiredByDefault() {
+		return this.modelFieldsRequiredByDefault;
+	}
+
+	/**
+	 * This sets the modelFieldsRequiredByDefault
+	 * @param modelFieldsRequiredByDefault the modelFieldsRequiredByDefault to set
+	 * @return this
+	 */
+	public DocletOptions setModelFieldsRequiredByDefault(boolean modelFieldsRequiredByDefault) {
+		this.modelFieldsRequiredByDefault = modelFieldsRequiredByDefault;
+		return this;
+	}
+
+	/**
+	 * This gets the modelFieldsXmlAccessTypeEnabled
+	 * @return the modelFieldsXmlAccessTypeEnabled
+	 */
+	public boolean isModelFieldsXmlAccessTypeEnabled() {
+		return this.modelFieldsXmlAccessTypeEnabled;
+	}
+
+	/**
+	 * This sets the modelFieldsXmlAccessTypeEnabled
+	 * @param modelFieldsXmlAccessTypeEnabled the modelFieldsXmlAccessTypeEnabled to set
+	 * @return this
+	 */
+	public DocletOptions setModelFieldsXmlAccessTypeEnabled(boolean modelFieldsXmlAccessTypeEnabled) {
+		this.modelFieldsXmlAccessTypeEnabled = modelFieldsXmlAccessTypeEnabled;
+		return this;
+	}
+
+	/**
+	 * This gets the modelFieldsNamingConvention
+	 * @return the modelFieldsNamingConvention
+	 */
+	public NamingConvention getModelFieldsNamingConvention() {
+		return this.modelFieldsNamingConvention;
+	}
+
+	/**
+	 * This sets the modelFieldsNamingConvention
+	 * @param modelFieldsNamingConvention the modelFieldsNamingConvention to set
+	 * @return this
+	 */
+	public DocletOptions setModelFieldsNamingConvention(NamingConvention modelFieldsNamingConvention) {
+		this.modelFieldsNamingConvention = modelFieldsNamingConvention;
+		return this;
+	}
+
+	/**
+	 * This gets the responseTypeTags
+	 * @return the responseTypeTags
+	 */
+	public List<String> getResponseTypeTags() {
+		return this.responseTypeTags;
+	}
+
+	/**
+	 * This gets tags that can customize the type for input body params
+	 * @return The list of tags that can customize input body params
+	 */
+	public List<String> getInputTypeTags() {
+		return this.inputTypeTags;
+	}
+
+	/**
+	 * This gets the defaultErrorTypeTags
+	 * @return the defaultErrorTypeTags
+	 */
+	public List<String> getDefaultErrorTypeTags() {
+		return this.defaultErrorTypeTags;
+	}
+
+	/**
+	 * This gets a list of javadoc tag names that can be used for the api description
+	 * @return list of javadoc tag names that can be used for the api description
+	 */
+	public List<String> getApiDescriptionTags() {
+		return this.apiDescriptionTags;
+	}
+
+	/**
+	 * This gets a list of javadoc tag names that can be used for the operation notes
+	 * @return list of javadoc tag names that can be used for the operation notes
+	 */
+	public List<String> getOperationNotesTags() {
+		return this.operationNotesTags;
+	}
+
+	/**
+	 * This gets a list of javadoc tag names that can be used for the operation summary
+	 * @return a list of javadoc tag names that can be used for the operation summary
+	 */
+	public List<String> getOperationSummaryTags() {
+		return this.operationSummaryTags;
+	}
+
+	/**
+	 * This gets list of javadoc tag names that can be used for the model field/method descriptions
+	 * @return list of javadoc tag names that can be used for the model field/method descriptions
+	 */
+	public List<String> getFieldDescriptionTags() {
+		return this.fieldDescriptionTags;
+	}
+
+	/**
+	 * This gets list of javadoc tag names that can be used for ordering resources in the resource listing
+	 * @return the list of javadoc tag names that can be used for ordering resources in the resource listing
+	 */
+	public List<String> getResourcePriorityTags() {
+		return this.resourcePriorityTags;
+	}
+
+	/**
+	 * This gets list of javadoc tag names that can be used for the description of resources
+	 * @return the list of javadoc tag names that can be used for the description of resources
+	 */
+	public List<String> getResourceDescriptionTags() {
+		return this.resourceDescriptionTags;
+	}
+
+	/**
+	 * This gets the fieldMinTags
+	 * @return the fieldMinTags
+	 */
+	public List<String> getFieldMinTags() {
+		return this.fieldMinTags;
+	}
+
+	/**
+	 * This gets the fieldMaxTags
+	 * @return the fieldMaxTags
+	 */
+	public List<String> getFieldMaxTags() {
+		return this.fieldMaxTags;
+	}
+
+	/**
+	 * This gets the fieldDefaultTags
+	 * @return the fieldDefaultTags
+	 */
+	public List<String> getFieldDefaultTags() {
+		return this.fieldDefaultTags;
+	}
+
+	/**
+	 * This gets the requiredParamsTags
+	 * @return the requiredParamsTags
+	 */
+	public List<String> getRequiredParamsTags() {
+		return this.requiredParamsTags;
+	}
+
+	/**
+	 * This gets the optionalParamsTags
+	 * @return the optionalParamsTags
+	 */
+	public List<String> getOptionalParamsTags() {
+		return this.optionalParamsTags;
+	}
+
+	/**
+	 * This gets the requiredFieldTags
+	 * @return the requiredFieldTags
+	 */
+	public List<String> getRequiredFieldTags() {
+		return this.requiredFieldTags;
+	}
+
+	/**
+	 * This gets the optionalFieldTags
+	 * @return the optionalFieldTags
+	 */
+	public List<String> getOptionalFieldTags() {
+		return this.optionalFieldTags;
+	}
+
+	/**
+	 * This gets the unauthOperationTags
+	 * @return the unauthOperationTags
+	 */
+	public List<String> getUnauthOperationTags() {
+		return this.unauthOperationTags;
+	}
+
+	/**
+	 * This gets the authOperationTags
+	 * @return the authOperationTags
+	 */
+	public List<String> getAuthOperationTags() {
+		return this.authOperationTags;
+	}
+
+	/**
+	 * This gets the unauthOperationTagValues
+	 * @return the unauthOperationTagValues
+	 */
+	public List<String> getUnauthOperationTagValues() {
+		return this.unauthOperationTagValues;
+	}
+
+	/**
+	 * This gets the operationScopeTags
+	 * @return the operationScopeTags
+	 */
+	public List<String> getOperationScopeTags() {
+		return this.operationScopeTags;
+	}
+
+	/**
+	 * This gets the authOperationScopes
+	 * @return the authOperationScopes
+	 */
+	public List<String> getAuthOperationScopes() {
+		return this.authOperationScopes;
+	}
+
+	public Recorder getRecorder() {
+		return this.recorder;
+	}
+
+	public DocletOptions setRecorder(Recorder recorder) {
+		this.recorder = recorder;
+		return this;
+	}
+
+	public Translator getTranslator() {
+		return this.translator;
+	}
+
+	public DocletOptions setTranslator(Translator translator) {
+		this.translator = translator;
+		return this;
+	}
+
+	/**
+	 * This gets the sortResourcesByPath
+	 * @return the sortResourcesByPath
+	 */
+	public boolean isSortResourcesByPath() {
+		return this.sortResourcesByPath;
+	}
+
+	/**
+	 * This sets the sortResourcesByPath
+	 * @param sortResourcesByPath the sortResourcesByPath to set
+	 * @return this
+	 */
+	public DocletOptions setSortResourcesByPath(boolean sortResourcesByPath) {
+		this.sortResourcesByPath = sortResourcesByPath;
+		return this;
+	}
+
+	/**
+	 * This gets the sortResourcesByPriority
+	 * @return the sortResourcesByPriority
+	 */
+	public boolean isSortResourcesByPriority() {
+		return this.sortResourcesByPriority;
+	}
+
+	/**
+	 * This sets the sortResourcesByPriority
+	 * @param sortResourcesByPriority the sortResourcesByPriority to set
+	 * @return this
+	 */
+	public DocletOptions setSortResourcesByPriority(boolean sortResourcesByPriority) {
+		this.sortResourcesByPriority = sortResourcesByPriority;
+		return this;
+	}
+
+	/**
+	 * This gets the sortOperationsByPath
+	 * @return the sortOperationsByPath
+	 */
+	public boolean isSortApisByPath() {
+		return this.sortApisByPath;
+	}
+
+	/**
+	 * This sets the sortApisByPath
+	 * @param sortApisByPath the sortApisByPath to set
+	 * @return this
+	 */
+	public DocletOptions setSortApisByPath(boolean sortApisByPath) {
+		this.sortApisByPath = sortApisByPath;
+		return this;
+	}
+
+	/**
+	 * This gets the includeSwaggerUi
+	 * @return the includeSwaggerUi
+	 */
+	public boolean isIncludeSwaggerUi() {
+		return this.includeSwaggerUi;
+	}
+
+	/**
+	 * This sets the includeSwaggerUi
+	 * @param includeSwaggerUi the includeSwaggerUi to set
+	 * @return this
+	 */
+	public DocletOptions setIncludeSwaggerUi(boolean includeSwaggerUi) {
+		this.includeSwaggerUi = includeSwaggerUi;
+		return this;
+	}
+
+	/**
+	 * This gets the excludeDeprecatedResourceClasses
+	 * @return the excludeDeprecatedResourceClasses
+	 */
+	public boolean isExcludeDeprecatedResourceClasses() {
+		return this.excludeDeprecatedResourceClasses;
+	}
+
+	/**
+	 * This gets the excludeDeprecatedModelClasses
+	 * @return the excludeDeprecatedModelClasses
+	 */
+	public boolean isExcludeDeprecatedModelClasses() {
+		return this.excludeDeprecatedModelClasses;
+	}
+
+	/**
+	 * This gets the excludeDeprecatedOperations
+	 * @return the excludeDeprecatedOperations
+	 */
+	public boolean isExcludeDeprecatedOperations() {
+		return this.excludeDeprecatedOperations;
+	}
+
+	/**
+	 * This sets the excludeDeprecatedOperations
+	 * @param excludeDeprecatedOperations the excludeDeprecatedOperations to set
+	 * @return this
+	 */
+	public DocletOptions setExcludeDeprecatedOperations(boolean excludeDeprecatedOperations) {
+		this.excludeDeprecatedOperations = excludeDeprecatedOperations;
+		return this;
+	}
+
+	/**
+	 * This gets the excludeDeprecatedFields
+	 * @return the excludeDeprecatedFields
+	 */
+	public boolean isExcludeDeprecatedFields() {
+		return this.excludeDeprecatedFields;
+	}
+
+	/**
+	 * This sets the excludeDeprecatedFields
+	 * @param excludeDeprecatedFields the excludeDeprecatedFields to set
+	 * @return this
+	 */
+	public DocletOptions setExcludeDeprecatedFields(boolean excludeDeprecatedFields) {
+		this.excludeDeprecatedFields = excludeDeprecatedFields;
+		return this;
+	}
+
+	/**
+	 * This gets the excludeDeprecatedParams
+	 * @return the excludeDeprecatedParams
+	 */
+	public boolean isExcludeDeprecatedParams() {
+		return this.excludeDeprecatedParams;
+	}
+
+	/**
+	 * This sets the excludeDeprecatedParams
+	 * @param excludeDeprecatedParams the excludeDeprecatedParams to set
+	 * @return this
+	 */
+	public DocletOptions setExcludeDeprecatedParams(boolean excludeDeprecatedParams) {
+		this.excludeDeprecatedParams = excludeDeprecatedParams;
+		return this;
+	}
+
+	/**
+	 * This gets the responseMessageSortMode
+	 * @return the responseMessageSortMode
+	 */
+	public ResponseMessageSortMode getResponseMessageSortMode() {
+		return this.responseMessageSortMode;
+	}
+
+	/**
+	 * This sets the responseMessageSortMode
+	 * @param responseMessageSortMode the responseMessageSortMode to set
+	 * @return this
+	 */
+	public DocletOptions setResponseMessageSortMode(ResponseMessageSortMode responseMessageSortMode) {
+		this.responseMessageSortMode = responseMessageSortMode;
+		return this;
+	}
+
+	/**
+	 * This gets the apiAuthorizations
+	 * @return the apiAuthorizations
+	 */
+	public ApiAuthorizations getApiAuthorizations() {
+		return this.apiAuthorizations;
+	}
+
+	/**
+	 * This sets the apiAuthorizations
+	 * @param apiAuthorizations the apiAuthorizations to set
+	 * @return this
+	 */
+	public DocletOptions setApiAuthorizations(ApiAuthorizations apiAuthorizations) {
+		this.apiAuthorizations = apiAuthorizations;
+		return this;
+	}
+
+	/**
+	 * This gets the apiInfo
+	 * @return the apiInfo
+	 */
+	public ApiInfo getApiInfo() {
+		return this.apiInfo;
+	}
+
+	/**
+	 * This sets the apiInfo
+	 * @param apiInfo the apiInfo to set
+	 * @return this
+	 */
+	public DocletOptions setApiInfo(ApiInfo apiInfo) {
+		this.apiInfo = apiInfo;
+		return this;
+	}
+
+	/**
+	 * This sets the variable replacements to use
+	 * @param variableReplacements properties to use for variable replacements
+	 * @return this
+	 */
+	public DocletOptions setVariableReplacements(Properties variableReplacements) {
+		this.variableReplacements = variableReplacements;
+		return this;
+	}
+
+	/**
+	 * This replaces any variables in the given value with replacements defined in the doclets variable replacements file
+	 * @param value The value to replace variables in
+	 * @return The value with any variable references replaced
+	 */
+	public String replaceVars(String value) {
+		if (value != null && this.variableReplacements != null && !this.variableReplacements.isEmpty()) {
+			return VariableReplacer.replaceVariables(this.variableReplacements, value);
+		}
+		return value;
+	}
+
+}

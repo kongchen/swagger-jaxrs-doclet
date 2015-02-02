@@ -1,0 +1,139 @@
+{
+    "apiVersion": "0",
+    "swaggerVersion": "1.2",
+    "basePath": "http://localhost:8080",
+    "resourcePath": "/valueconstraints",
+    "apis": [
+        {
+            "path": "/valueconstraints",
+            "operations": [
+                {
+                    "method": "POST",
+                    "nickname": "postData",
+                    "type": "Data",
+                    "parameters": [
+                        {
+                            "paramType": "body",
+                            "name": "data",
+                            "type": "Data",
+                            "required" : true
+                        },
+                        {
+                            "paramType": "query",
+                            "name": "enumValue",
+                            "type": "string",
+                            "enum": [
+						        "VALUE1",
+						        "VALUE2"
+						    	],
+						    "defaultValue" : "VALUE1"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "path": "/valueconstraints/1",
+            "operations": [
+                {
+                    "method": "POST",
+                    "nickname": "putMinMax",
+                    "type": "void",
+                    "parameters": [
+                        {
+                            "paramType": "query",
+                            "name": "p1",
+                            "type": "string",
+                            "type": "integer",
+                			"format" : "int32",
+                			"minimum": 5,
+                			"maximum": 15,
+                			"defaultValue" : 10
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "path": "/valueconstraints/2",
+            "operations": [
+                {
+                    "method": "POST",
+                    "nickname": "putMinMaxes",
+                    "type": "void",
+                    "parameters": [
+                        {
+                            "paramType": "query",
+                            "name": "p1",
+                            "type": "string",
+                            "type": "number",
+                			"format" : "double",
+                			"minimum": 6.5,
+                			"maximum": 9,
+                			"defaultValue" : 6.95
+                        },
+                        {
+                            "paramType": "query",
+                            "name": "p2a",
+                            "type": "string",
+                            "type": "integer",
+                			"format" : "int64",
+                			"minimum": 10,
+                			"maximum": 17,
+                			"defaultValue" : 12
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "models": {
+        "Data": {
+            "id": "Data",
+            "properties": {
+                "minGetterTag": {
+                	"type": "integer",
+                	"format" : "int32",
+                	"minimum": 1,
+                	"defaultValue" : 2
+                },
+                "maxGetterTag": {
+                	"type": "integer",
+                	"format" : "int32",
+                	"maximum": 10,
+                	"defaultValue" : 5
+                },
+                "value": {
+                    "type": "string",
+                    "enum": [
+						        "VALUE1",
+						        "VALUE2"
+						    ]
+                },
+                "minMaxFieldTag": {
+                	"type": "integer",
+                	"format" : "int32",
+                	"minimum": 2,
+                	"maximum": 8
+                },
+                "minMaxGetterTag": {
+                	"type": "integer",
+                	"format" : "int32",
+                	"minimum": 2,
+                	"maximum": 8,
+                	"defaultValue" : 2
+                },
+                "maxFieldTag": {
+                	"type": "integer",
+                	"format" : "int32",
+                	"maximum": 10
+                },
+                "minFieldTag": {
+                	"type": "integer",
+                	"format" : "int32",
+                	"minimum": 1
+                }
+            }
+        }
+    }
+}

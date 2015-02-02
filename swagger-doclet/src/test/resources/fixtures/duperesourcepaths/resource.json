@@ -1,0 +1,28 @@
+{
+    "apiVersion": "0",
+    "swaggerVersion": "1.2",
+    "basePath": "http://localhost:8080",
+    "resourcePath": "/resource",
+    "apis": [
+        {
+            "path": "/resource/bar",
+            "operations": [
+                {
+                    "method": "GET",
+                    "nickname": "doSomething",
+                    "type": "void"
+                }
+            ]
+        },
+        {
+            "path": "/resource/foo",
+            "operations": [
+                {
+                    "method": "GET",
+                    "nickname": "doSomething",
+                    "type": "void"
+                }
+            ]
+        }
+    ]
+}

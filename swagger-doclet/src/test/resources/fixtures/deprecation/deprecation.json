@@ -1,0 +1,36 @@
+{
+    "apiVersion": "0",
+    "swaggerVersion": "1.2",
+    "basePath": "http://localhost:8080",
+    "resourcePath": "/deprecation",
+    "apis": [
+        {
+            "path": "/deprecation",
+            "operations": [
+                {
+                    "method": "POST",
+                    "nickname": "getData",
+                    "type": "Data",
+                    "parameters": [
+                        {
+                            "paramType": "query",
+                            "name": "p1",
+                            "type": "integer",
+                            "format": "int32"
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "models": {
+        "Data": {
+            "id": "Data",
+            "properties": {
+                "value": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+}

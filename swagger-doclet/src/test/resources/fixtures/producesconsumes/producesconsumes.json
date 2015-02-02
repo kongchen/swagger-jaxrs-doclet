@@ -1,0 +1,72 @@
+{
+    "apiVersion": "0",
+    "swaggerVersion": "1.2",
+    "basePath": "http://localhost:8080",
+    "resourcePath": "/producesconsumes",
+    "apis": [
+        {
+            "path": "/producesconsumes",
+            "operations": [
+                {
+                    "method": "GET",
+                    "nickname": "getData",
+                    "type": "Data",
+                    "produces": [
+                    	"application/json", "application/xml"
+                    ],
+                    "consumes": [
+                    	"text/plain"
+                    ]
+                },
+                {
+                    "method": "POST",
+                    "nickname": "postData",
+                    "type": "Data",
+                    "parameters": [
+                        {
+                            "paramType": "body",
+                            "name": "data",
+                            "type": "Data",
+                            "required" : true
+                        }
+                    ],
+                    "consumes": [
+                    	"application/json", "application/xml"
+                    ],
+                    "produces": [
+                    	"application/json", "application/xml"
+                    ]
+                },
+                {
+                    "method": "POST",
+                    "nickname": "postData2",
+                    "type": "Data",
+                    "parameters": [
+                        {
+                            "paramType": "body",
+                            "name": "data",
+                            "type": "Data",
+                            "required" : true
+                        }
+                    ],
+                    "consumes": [
+                    	"text/plain"
+                    ],
+                    "produces": [
+                    	"text/plain"
+                    ]
+                }
+            ]
+        }
+    ],
+    "models": {
+        "Data": {
+            "id": "Data",
+            "properties": {
+                "value": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+}

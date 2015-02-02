@@ -1,0 +1,38 @@
+{
+    "apiVersion": "0",
+    "swaggerVersion": "1.2",
+    "basePath": "http://localhost:8080",
+    "resourcePath": "/b",
+    "apis": [
+    	{
+            "path": "/v1/b",
+            "operations": [
+                {
+                    "method": "GET",
+                    "nickname": "getB",
+                    "type": "void"
+                }
+            ]
+        },
+        {
+            "path": "/v1/y",
+            "operations": [
+                {
+                    "method": "GET",
+                    "nickname": "getY",
+                    "type": "void"
+                }
+            ]
+        },
+        {
+            "path": "/z",
+            "operations": [
+                {
+                    "method": "GET",
+                    "nickname": "getZ",
+                    "type": "void"
+                }
+            ]
+        }
+    ]
+}
